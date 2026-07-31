@@ -1,0 +1,29 @@
+{
+  "name": "reto1-inventory-sync",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Backend service that consolidates stock movements reported by multiple stores into a single network inventory",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node src/backend/server.js",
+    "dev": "node --watch src/backend/server.js",
+    "migrate": "node src/backend/db/migrate.js",
+    "seed": "node src/backend/db/seed.js",
+    "reset": "npm run migrate -- --force && npm run seed",
+    "simulate": "node scripts/simulate.js",
+    "test": "node --test \"tests/**/*.test.js\"",
+    "test:concurrency": "node --test tests/concurrency.test.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "supertest": "^7.0.0"
+  }
+}

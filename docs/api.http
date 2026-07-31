@@ -1,0 +1,193 @@
+### Network Inventory Sync — request collection
+### Compatible with REST Client (VS Code) and the IntelliJ HTTP client.
+### Requires the server running: npm start
+
+@host = http://localhost:3000/api/v1
+@storeA = sk_store_a_demo
+@storeB = sk_store_b_demo
+@storeC = sk_store_c_demo
+@admin = sk_admin_demo
+
+
+### ────────────────────────────────────────────────────────────────────────
+### 1 · Health and catalog
+### ────────────────────────────────────────────────────────────────────────
+
+### Health (public, no API key)
+GET {{host}}/health
+
+### Stores
+GET {{host}}/stores
+X-API-Key: {{admin}}
+
+### Products with their thresholds
+GET {{host}}/products
+X-API-Key: {{admin}}
+
+
+### ────────────────────────────────────────────────────────────────────────
+### 2 · Reporting movements
+### ────────────────────────────────────────────────────────────────────────
+
+### Sale at store-a -> 201, stock drops by exactly 3
+POST {{host}}/movements
+X-API-Key: {{storeA}}
+Content-Type: application/json
+
+{
+  "sku": "BOOK-HB-WK",
+  "type": "OUT",
+  "quantity": 3,
+  "reason": "pos-sale"
+}
+
+### Warehouse receipt at store-b -> 201
+POST {{host}}/movements
+X-API-Key: {{storeB}}
+Content-Type: application/json
+
+{
+  "sku": "BOOK-HB-WK",
+  "type": "IN",
+  "quantity": 25,
+  "reason": "warehouse-receipt"
+}
+
+
+### ────────────────────────────────────────────────────────────────────────
+### 3 · The two cases that define the design
+### ────────────────────────────────────────────────────────────────────────
+
+### 3.1 OVERSELLING — ask for more than what's available.
+### Returns 409 INSUFFICIENT_STOCK with the units on hand.
+### The guard lives in the UPDATE, so there is no window between read and write.
+POST {{host}}/movements
+X-API-Key: {{storeA}}
+Content-Type: application/json
+
+{
+  "sku": "BOOK-HB-WK",
+  "type": "OUT",
+  "quantity": 99999
+}
+
+### 3.2 ISOLATION — store-a trying to report for store-b.
+### Returns 403 STORE_MISMATCH: store_id is derived from the API key.
+POST {{host}}/movements
+X-API-Key: {{storeA}}
+Content-Type: application/json
+
+{
+  "store_id": "store-b",
+  "sku": "BOOK-HB-WK",
+  "type": "OUT",
+  "quantity": 1
+}
+
+
+### ────────────────────────────────────────────────────────────────────────
+### 4 · Validation and authentication
+### ────────────────────────────────────────────────────────────────────────
+
+### No API key -> 401
+GET {{host}}/inventory
+
+### The admin key cannot write -> 403 STORE_KEY_REQUIRED
+POST {{host}}/movements
+X-API-Key: {{admin}}
+Content-Type: application/json
+
+{ "sku": "BOOK-CSP-CAPTIVE", "type": "IN", "quantity": 1 }
+
+### Unknown field and invalid quantity -> 400 with per-field detail
+POST {{host}}/movements
+X-API-Key: {{storeA}}
+Content-Type: application/json
+
+{ "sku": "BOOK-CSP-CAPTIVE", "type": "IN", "qty": -3 }
+
+### Product not in the catalog -> 404
+POST {{host}}/movements
+X-API-Key: {{storeA}}
+Content-Type: application/json
+
+{ "sku": "DOES-NOT-EXIST", "type": "IN", "quantity": 1 }
+
+
+### ────────────────────────────────────────────────────────────────────────
+### 5 · Queries
+### ────────────────────────────────────────────────────────────────────────
+
+### Network-wide consolidated inventory
+GET {{host}}/inventory
+X-API-Key: {{admin}}
+
+### Only products under their threshold
+GET {{host}}/inventory?low_stock=true
+X-API-Key: {{admin}}
+
+### Per-store breakdown
+GET {{host}}/inventory?group_by=store&store_id=store-a
+X-API-Key: {{admin}}
+
+### Stock range and category
+GET {{host}}/inventory?category=fantasy&min_qty=10&max_qty=60
+X-API-Key: {{admin}}
+
+### Product detail: breakdown, open alert, and recent movements
+GET {{host}}/inventory/BOOK-HB-WK
+X-API-Key: {{admin}}
+
+### History filtered by product and type
+GET {{host}}/movements?sku=BOOK-HB-WK&type=OUT&page_size=10
+X-API-Key: {{admin}}
+
+### Recent activity across the network
+GET {{host}}/activity?limit=15
+X-API-Key: {{admin}}
+
+
+### ────────────────────────────────────────────────────────────────────────
+### 6 · Alerts and thresholds
+### ────────────────────────────────────────────────────────────────────────
+
+### Open alerts
+GET {{host}}/alerts
+X-API-Key: {{admin}}
+
+### History of resolved alerts
+GET {{host}}/alerts?status=RESOLVED
+X-API-Key: {{admin}}
+
+### Raise the threshold above the current stock.
+### Re-evaluates immediately: the response carries the OPENED event.
+PATCH {{host}}/products/BOOK-HB-WK/threshold
+X-API-Key: {{admin}}
+Content-Type: application/json
+
+{ "low_stock_threshold": 500 }
+
+### Lower it again: the response carries the RESOLVED event.
+PATCH {{host}}/products/BOOK-HB-WK/threshold
+X-API-Key: {{admin}}
+Content-Type: application/json
+
+{ "low_stock_threshold": 12 }
+
+### No admin key -> 403
+PATCH {{host}}/products/BOOK-HB-WK/threshold
+X-API-Key: {{storeA}}
+Content-Type: application/json
+
+{ "low_stock_threshold": 5 }
+
+
+### ────────────────────────────────────────────────────────────────────────
+### 7 · Consistency check
+### ────────────────────────────────────────────────────────────────────────
+
+### Compares the projection against the sum of the ledger.
+### Must always return { "consistent": true, "discrepancies": [] },
+### even with the simulator running in parallel.
+GET {{host}}/reconcile
+X-API-Key: {{admin}}

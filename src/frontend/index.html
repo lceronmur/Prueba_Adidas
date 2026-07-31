@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Inventory · Store Sync</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__title">
+      <h1>Network Inventory</h1>
+      <p class="topbar__subtitle">Consolidated in real time from every store</p>
+    </div>
+    <div class="topbar__status">
+      <span class="pill" id="pill-stores">— stores</span>
+      <span class="pill pill--alert" id="pill-alerts">— alerts</span>
+      <span class="dot" id="dot-conn" title="Connection status"></span>
+      <span class="topbar__updated" id="last-updated">—</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <div class="filters">
+        <input type="search" id="filter-sku" placeholder="Search SKU or product…" autocomplete="off">
+        <select id="filter-store">
+          <option value="">All stores</option>
+        </select>
+        <select id="filter-category">
+          <option value="">All categories</option>
+        </select>
+        <label class="checkbox">
+          <input type="checkbox" id="filter-low"> Low stock only
+        </label>
+        <span class="filters__count" id="result-count"></span>
+      </div>
+
+      <div class="table-wrap">
+        <table id="inventory-table">
+          <thead id="inventory-head"></thead>
+          <tbody id="inventory-body">
+            <tr><td class="empty">Loading inventory…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="split">
+      <section class="panel">
+        <h2>Open alerts <span class="badge" id="alerts-count">0</span></h2>
+        <ul class="list" id="alerts-list">
+          <li class="empty">No alerts</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>Recent movements</h2>
+        <ul class="list list--feed" id="activity-list">
+          <li class="empty">No activity</li>
+        </ul>
+      </section>
+    </div>
+
+    <footer class="footnote">
+      Read-only panel. Mutations only come from stores via
+      <code>POST /api/v1/movements</code>. Refreshes every 3&nbsp;s.
+    </footer>
+  </main>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
