@@ -4,7 +4,7 @@ A backend service that receives stock movements from multiple (simulated)
 stores and consolidates them into a single, consistent network inventory,
 exposed through a REST API.
 
-Video presentation: https://youtu.be/qMvdZtGrHAY
+Video presentation: https://youtu.be/ojPkZFxQ2KU
 
 ---
 
